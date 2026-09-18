@@ -1,63 +1,81 @@
-# PROJET TAL 
+# NLP Model Comparison: Sentiment Analysis & Authorship Attribution
 
-Ce répertoire contient le code d'une étude comparative de modèles d'apprentissage appliqués à deux tâches distinctes de classification. La première tâche porte sur l’analyse d’un corpus de 27 000 critiques de films classées de façon binaire : sentiment positif ou négatif. La seconde tâche de classification consiste à construire un modèle capable de reconnaître le style linguistique de Chirac et Mitterrand afin d’estimer la probabilité que des phrases aient été dites par l’un ou par l’autre. Pour chaque tâche, nous avons évalué l’influence de plusieurs stratégies de prétraitement, de vectorisation et d’architectures de modèles, allant des approches linéaires aux réseaux de neurones profonds. Pour les deux tâches, le meilleure score en test est obtenu à l’aide des Transformers : le score F1 obtenu est de 0.92 pour la tâche de classification des critiques de films avec le modèle DistilBERT, et de 0.71 pour la reconnaissance de style oratoire, avec Camembert-large. Le couplage de la vectorisation TF-IDF et du SVM linéaire arrive juste derrière pour les films, avec un score F1 de 90.224, et 0.653 pour la seconde tâche.
+Comparative study of Machine Learning and Deep Learning models applied to two text classification tasks:
 
-Ce répertoire comprend :
-- le dossier Results: les soumissions faites sur la plateforme du challenge au format CSV ;
-- le dossier Codes : les fichiers de code principaux ; 
-- ce fichier README.
+1. **Sentiment analysis** - binary classification on 27,000 movie reviews
+2. **Authorship attribution** - identifying the speaking style of French presidents Chirac (49890 sentences) vs. Mitterrand (7523 sentences), a notably imbalanced dataset (~87/13 split)
 
-Ce répertoire ne comprend pas : 
-- les modèles finaux ;
-- les fichiers sources fournis de train et test pour les deux tâches ;
-- les images (matrices et graphiques qui figurent dans le rapport).
+Built in a pair project with teammate Yuyu CHEN.
 
-### Description des Notebooks
+## Results
 
-`cam.ipynb` (dossier /Codes/Presidents) :  
-Ce fichier est utilisé pour le fine-tuning du modèle CamemBERT avec Google Colab. Il comprend :  
-- Importation des bibliothèques ;  
-- Définition de la classe `TransformerWrapper` pour encapsuler la logique du modèle ;  
-- Intégration du jeu de données étendu incluant le fichier `mitterrand.txt` qui contient 16 737 phrases supplémentaires ;  
-- Configuration du Trainer (hyperparamètres et stratégie d'évaluation) ;  
-- Phase d'entraînement et génération des prédictions.  
+| Task | Best model | F1 score | Runner-up |
+|---|---|---|---|
+| Sentiment (movies) | DistilBERT | 0.92 | TF-IDF + SVM (0.90) |
+| Authorship (speeches) | CamemBERT-large | 0.71 | TF-IDF + SVM (0.65) |
 
-`dist.ipynb` (dossier /Codes/Movies) :  
-Ce fichier est utilisé pour le fine-tuning du modèle DistilBERT avec Google Colab. Il comprend :  
-- Importation des bibliothèques ;  
-- Définition de la classe `TransformerWrapper` pour encapsuler la logique du modèle ;  
-- Chargement du corpus de 25 000 critiques de films donné en TME 4 ;  
-- Configuration du Trainer (hyperparamètres et stratégie d'évaluation) ;  
-- Phase d'entraînement et génération des prédictions.  
+Transformers outperformed all classical approaches on both tasks, with a much larger gap for authorship attribution than for sentiment analysis - suggesting that stylistic classification benefits more from the rich contextual representations Transformers provide.
+The authorship task's class imbalance (~87% Chirac / ~13% Mitterrand) made it meaningfully harder than the balanced sentiment task, and motivated the weighted sampling/loss strategies used in the RNN and Transformer models (see `RNNWrapper` and `TransformerWrapper` below).
 
-`main_pres.ipynb` (dossier /Codes/Presidents) :  
-Ce notebook est le notebook principal pour l'exploration et le test des modèles linéaires et RNN de la tâche 2. Il comprend :
-- Chargement et courte analyse des données ;  
-- Mise en œuvre du pipeline tf-idf + svm avec GridSearchCV ;  
-- Exécution de campagnes d'expériences automatisées testant itérativement différentes fonctions de prétraitement et modèles (Régression logistique, SVM, RNN, Transformer), en utilisant des fonctions définies dans `preprocessing.py` que nous décrivons dans la section suivante.  
+## Approach
 
-`main_movies.ipynb` (dossier /Codes/Movies) :  
-Ce notebook est le notebook principal pour l'exploration et le test des modèles linéaires et RNN de la Tâche 1. Il comprend :
-- Chargement et courte analyse des données ;  
-- Mise en œuvre du pipeline tf-idf + svm avec GridSearchCV ;  
-- Exécution de campagnes d'expériences automatisées testant itérativement différentes fonctions de prétraitement et modèles (Régression logistique, SVM, RNN, Transformer), en utilisant des fonctions définies dans `utils.py` que nous décrivons dans la section suivante.  
+For each task, we benchmarked the impact of multiple preprocessing strategies, vectorization methods, and model architectures - ranging from linear models (TF-IDF + SVM/Logistic Regression) to deep learning (BiLSTM) to fine-tuned Transformers (DistilBERT, CamemBERT).
 
-### Description des fichiers `utils.py` et `preprocessing.py`
+## Repo structure
 
-`utils.py` :  
-L'ensemble des fonctions définies dans ce fichier constitue le cœur du pipeline expérimental construit pour la tâche 1 (Films). Il comprend :
-- Fonctions de nettoyage : Définition de quatre niveaux de prétraitement (de clean_raw à clean_keep_negation) ;
-- Gestionnaire d'expériences : Implémentation de la structure `ExperimentResult` pour le suivi systématique des métriques (Accuracy, F1-macro, Log-Loss) et des chemins de sauvegarde ;
-- Fonctions de construction dynamique de pipelines *Scikit-Learn* (Tfidf + SVM/LogReg), d'architectures Keras (BiLSTM) et de Transformers (DistilBERT) ;
-- Outils de validation croisée stratifiée (`StratifiedKFold`), génération automatique de matrices de confusion et algorithme de sélection du meilleur modèle global (`copy_best_models`) ;
-- Fonction predict_with_best_global permettant de charger le modèle optimal et de générer le fichier de soumission CSV final.  
+- `Codes/Movies/`: sentiment analysis pipeline (`dist.ipynb`, `main_movies.ipynb`, `utils.py`)
+- `Codes/Presidents/`: authorship attribution pipeline (`cam.ipynb`, `main_pres.ipynb`, `preprocessing.py`)
+- `Results/`: challenge submission files (CSV)
 
-`preprocessing.py` :  
-L'ensemble des fonctions définies dans ce fichier constitue le cœur du pipeline expérimental construit pour la tâche 2 (Présidents). Il regroupe les utilitaires de traitement et les architectures de modèles. Il comprend :
-- Fonctions de nettoyage : Définition de cinq niveau de prétraitement allant de clean_1 à clean_4 et une fonction preprocess_pres qui procède à la lemmatisation via SpaCy  ;
-- Wrappers de modèles :
-  - `W2VLogRegWrapper` : Implémentation d'un modèle Word2Vec pondéré par TF-IDF avec entraînement itératif et early stopping (performances pas convaincantes donc non inclus dans le rapport) ;
-  - `RNNWrapper` : Architecture Bi-LSTM sous PyTorch incluant un `WeightedRandomSampler` pour gérer le déséquilibre des classes ;
-  - `TransformerWrapper` : Intégration de CamemBERT via la bibliothèque HuggingFace, avec une personnalisation de la fonction de perte (`WeightedTrainer`) ;
-- Fonctions de calcul de métriques (Accuracy, F1, Log-Loss), validation croisée stratifiée et génération de matrices de confusion formatées ;
-- Système de sauvegarde et de chargement gérant les fichiers `.joblib` pour Scikit-Learn et les répertoires de poids pour les modèles de Deep Learning.
+Not included: final trained models, raw train/test source files, report figures.
+
+<details>
+<summary><strong>Notebook & pipeline details (click to expand)</strong></summary>
+
+### `dist.ipynb` (`/Codes/Movies`)
+Fine-tuning the DistilBERT model on Google Colab:
+- `TransformerWrapper` class
+- Loading the 25,000-review movie corpus
+- Trainer configuration
+- Training and predictions on test set
+
+### `cam.ipynb` (`/Codes/Presidents`)
+Fine-tuning the CamemBERT model on Google Colab:
+- `TransformerWrapper` class encapsulating model logic
+- Extended dataset including `mitterrand.txt` (16,737 additional sentences)
+- Trainer configuration (hyperparameters, evaluation strategy)
+- Training and predictions on test set
+
+### `main_movies.ipynb` (`/Codes/Movies`)
+Main exploration notebook for task 1:
+- Data loading and exploratory analysis
+- TF-IDF + SVM pipeline with `GridSearchCV`
+- Automated experiment runs testing different preprocessing functions and models, using functions from `utils.py`
+
+### `main_pres.ipynb` (`/Codes/Presidents`)
+Main exploration notebook for task 2:
+- Data loading and exploratory analysis
+- TF-IDF + SVM pipeline with `GridSearchCV`
+- Automated experiment runs testing different preprocessing functions and models (Logistic Regression, SVM, RNN, Transformer), using functions from `preprocessing.py`
+
+
+
+### `utils.py`
+Core experimental pipeline for task 1 (movies):
+- Four preprocessing levels (`clean_raw` to `clean_keep_negation`)
+- `ExperimentResult` structure for systematic tracking of metrics (Accuracy, F1-macro, Log-Loss)
+- Dynamic construction of Scikit-Learn pipelines (TF-IDF + SVM/LogReg), Keras architectures (BiLSTM), and Transformers (DistilBERT)
+- Stratified cross-validation, automatic confusion matrix generation, global best-model selection (`copy_best_models`)
+- `predict_with_best_global` function to load the optimal model and generate the final submission CSV
+
+### `preprocessing.py`
+Core experimental pipeline for task 2 (presidents):
+- Five preprocessing levels (`clean_1` to `clean_4`) plus `preprocess_pres` for SpaCy-based lemmatization
+- Model wrappers:
+  - `W2VLogRegWrapper` - TF-IDF-weighted Word2Vec with early stopping (underwhelming results, excluded from the report)
+  - `RNNWrapper` - PyTorch Bi-LSTM architecture with `WeightedRandomSampler` to handle class imbalance
+  - `TransformerWrapper` - HuggingFace CamemBERT integration with a custom loss function (`WeightedTrainer`)
+- Metric computation, stratified cross-validation, formatted confusion matrices
+- Save/load handling for `.joblib` files (Scikit-Learn) and weight directories (Deep Learning)
+
+</details>
